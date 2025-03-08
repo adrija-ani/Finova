@@ -18,14 +18,38 @@ const predefinedResponses = {
 
 const fetchGeminiResponse = async (userInput) => {
   try {
-    const requestData = { contents: [{ parts: [{ text: userInput }] }] };
+    // Enhanced prompt with instructions for brevity
+    const enhancedPrompt = `
+      You are FINOVA, a concise financial assistant chatbot. 
+      Provide brief, direct answers in 1-2 sentences maximum.
+      Avoid unnecessary explanations, introductions, or conclusions.
+      Question: ${userInput}
+    `;
+
+    const requestData = { 
+      contents: [{ parts: [{ text: enhancedPrompt }] }],
+      generationConfig: {
+        maxOutputTokens: 150 // Limit the response length
+      }
+    };
+    
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
       requestData,
       { headers: { "Content-Type": "application/json" } }
     );
+    
     let aiResponse = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't generate a response.";
-    return aiResponse.replace(/\bAI\b|\bchatbot\b|\bmodel\b/g, "FINOVA");
+    
+    // Further processing for brevity
+    aiResponse = aiResponse
+      .replace(/\bAI\b|\bchatbot\b|\bmodel\b/g, "FINOVA")
+      .replace(/^(Hi|Hello|Greetings|Hey).*?\,\s*/i, "") // Remove greetings
+      .replace(/\s*As FINOVA,\s*/i, "") // Remove self-references
+      .replace(/\.(.*)/s, ".") // Keep only the first sentence if multiple
+      .trim();
+      
+    return aiResponse;
   } catch (error) {
     console.error("Gemini API error:", error);
     return "I apologize, but FINOVA is having trouble processing your request right now.";
@@ -35,7 +59,7 @@ const fetchGeminiResponse = async (userInput) => {
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { text: "Hello! I'm FINOVA, your AI financial assistant. How can I help you today?", isUser: false },
+    { text: "Hello! I'm FINOVA. How can I help you today?", isUser: false }, // Shortened initial message
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
